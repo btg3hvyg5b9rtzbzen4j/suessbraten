@@ -7,7 +7,38 @@
 #include <string.h>
 
 #include <windows.h>
+#include <winuser.h>
 #include <tlhelp32.h>
+
+LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
+  return DefWindowProc(hwnd, msg, wParam, lParam);
+}
+
+DWORD WINAPI WindowThread(LPVOID lpParam)
+{
+    HINSTANCE hInstance = GetModuleHandle(NULL);
+    
+    WNDCLASS wc = { 0 };
+    wc.lpfnWndProc = WindowProc;
+    wc.lpszClassName = "Overlay";
+    wc.hInstance = hInstance;
+    
+    RegisterClass(&wc);
+    
+    HWND hOverlay = CreateWindowEx(0, wc.lpszClassName, wc.lpszClassName, WS_CAPTION, 0, 0, 500, 500,
+                                 NULL, NULL, hInstance, NULL);
+    
+    ShowWindow(hOverlay, SW_SHOW);
+    UpdateWindow(hOverlay);
+
+    MSG msg;
+    while (GetMessage(&msg, NULL, 0, 0)) {
+        TranslateMessage(&msg);
+        DispatchMessage(&msg);
+    }
+    
+    return 0;
+}
 
 void panic(const char *msg) {
   fprintf(stderr, "[!] %s\n", msg);
@@ -15,10 +46,18 @@ void panic(const char *msg) {
   exit(1);
 }
 
-DWORD getProcessId(const char *processName) {
+int main() {
+  HANDLE hProcess = NULL;
+  HWND hOverlay = NULL;
+  const char *processName = "sauerbraten.exe";
+  DWORD processId = 0;
+  uintptr_t modBase = 0;
+
+  // get process id
   HANDLE hProcessSnap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
 
-  if (!hProcessSnap) panic("Couldn't get process list snapshot.");
+  if (!hProcessSnap)
+    panic("Couldn't get process list snapshot.");
 
   PROCESSENTRY32 procEntry = {.dwSize = sizeof(PROCESSENTRY32)};
 
@@ -27,24 +66,25 @@ DWORD getProcessId(const char *processName) {
     panic("Couldn't get first process in list.");
   }
 
-  DWORD pid = 0;
   do {
     if (strcmp(processName, procEntry.szExeFile) == 0) {
-      pid = procEntry.th32ProcessID;
+      processId = procEntry.th32ProcessID;
       break;
     }
   } while (Process32Next(hProcessSnap, &procEntry));
+
   CloseHandle(hProcessSnap);
 
-  if (pid == 0) panic("Couldn't get process ID.");
+  if (processId == 0)
+    panic("Couldn't get process ID.");
 
-  return pid;
-}
+  printf("[+] Found process ID: %lu.\n", processId);
 
-uintptr_t getModuleBase(DWORD pid, const char *moduleName) {
-  HANDLE hModuleSnap = CreateToolhelp32Snapshot(TH32CS_SNAPMODULE, pid);
+  // get main module
+  HANDLE hModuleSnap = CreateToolhelp32Snapshot(TH32CS_SNAPMODULE, processId);
 
-  if (!hModuleSnap) panic("Couldn't get module list snapshot.");
+  if (!hModuleSnap)
+    panic("Couldn't get module list snapshot.");
 
   MODULEENTRY32 modEntry = {.dwSize = sizeof(MODULEENTRY32)};
 
@@ -53,9 +93,8 @@ uintptr_t getModuleBase(DWORD pid, const char *moduleName) {
     panic("Couldn't get first module in list.");
   }
 
-  uintptr_t modBase = 0;
   do {
-    if (strcmp(moduleName, modEntry.szModule) == 0) {
+    if (strcmp(processName, modEntry.szModule) == 0) {
       modBase = (uintptr_t)modEntry.modBaseAddr;
       break;
     }
@@ -63,26 +102,26 @@ uintptr_t getModuleBase(DWORD pid, const char *moduleName) {
 
   CloseHandle(hModuleSnap);
 
-  if (modBase == 0) panic("Couldn't get module base.");
+  if (modBase == 0)
+    panic("Couldn't get module base.");
 
-  return modBase;
-}
+  printf("[+] Got module base: 0x%zX.\n", modBase);
 
-int main() {
-  const char* processName = "sauerbraten.exe";
+  // get process handle
+  hProcess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, processId);
 
-  DWORD pid = getProcessId(processName);
-  printf("[+] Found process ID: %lu\n", pid);
+  if (!hProcess)
+    panic("Couldn't get process handle.");
 
-  HANDLE hProcess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, pid);
-  printf("[+] Got process handle: 0x%zX\n", (size_t)hProcess);
+  printf("[+] Got process handle: 0x%zX.\n", (size_t)hProcess);
 
-  uintptr_t modBase = getModuleBase(pid, processName);
-  printf("[+] Got module base: 0x%zX\n", modBase);
+  // run overlay in a separate thread cause we ball
+  CreateThread(NULL, 0, WindowThread, NULL, 0, NULL);
 
-  
+  while (!(GetAsyncKeyState(VK_END) & 1)) {
+    printf("run\n");
+    Sleep(1000 / 60);
+  }
 
-  CloseHandle(hProcess);
-  _getch();
   return 0;
 }
