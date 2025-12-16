@@ -9,3 +9,5 @@ if ($LASTEXITCODE -eq 0) {
     Write-Host "Errors:`n" -ForegroundColor Yellow
     Write-Host $output -ForegroundColor Red
 }
+
+Start-Process main.exe
