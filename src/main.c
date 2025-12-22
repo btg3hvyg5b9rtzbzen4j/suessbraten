@@ -11,7 +11,8 @@
 #include "process.h"
 #include "overlay.h"
 
-static void ErrorAndExit(const char *msg) {
+static void ErrorAndExit(const char *msg)
+{
 #ifdef DEBUG
     printf("Error: %s\n", msg);
     _getch();
@@ -20,7 +21,8 @@ static void ErrorAndExit(const char *msg) {
 }
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE _hPrevInstance,
-                   PSTR _pCmdLine, int _nCmdShow) {
+                   PSTR _pCmdLine, int _nCmdShow)
+{
 #ifdef DEBUG
     AllocConsole();
     FILE *fp;
@@ -34,28 +36,40 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE _hPrevInstance,
 
     DWORD processId = GetProcessIdFromName(processName);
     if (!processId)
+    {
         ErrorAndExit("Couldn't get process id.");
+    }
 
     HANDLE hProcess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, processId);
     if (!hProcess)
+    {
         ErrorAndExit("Couldn't get process handle.");
+    }
 
     HWND hOverlay = CreateOverlay(hInstance);
     if (!hOverlay)
+    {
         ErrorAndExit("Couldn't create overlay.");
+    }
 
     HWND hTarget = FindWindow(NULL, windowName);
     if (!hTarget)
+    {
         ErrorAndExit("Couldn't find target window.");
+    }
 
     const int wait = 1000 / GetFps();
 
     /*
      *  MAIN LOOP
      */
-    while (!(GetAsyncKeyState(VK_END) & 1)) {
+    while (!(GetAsyncKeyState(VK_END) & 1))
+    {
+        // Exit the program if the target window was closed.
         if (!IsWindow(hTarget))
+        {
             break;
+        }
 
         UpdateOverlay(hOverlay, hTarget);
         Sleep(wait);
