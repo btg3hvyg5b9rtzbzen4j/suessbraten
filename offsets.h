@@ -1,0 +1,2 @@
+#define O_PROJ_MATRIX 0x32D000
+#define O_VIEW_MATRIX 0x32CFC0
