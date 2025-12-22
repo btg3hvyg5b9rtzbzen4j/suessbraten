@@ -7,7 +7,7 @@
 #include <conio.h>
 #include <windows.h>
 
-#include "offsets.h"
+#include "game.h"
 #include "process.h"
 #include "overlay.h"
 
@@ -38,6 +38,12 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE _hPrevInstance,
     if (!processId)
     {
         ErrorAndExit("Couldn't get process id.");
+    }
+
+    uintptr_t moduleBase = GetProcessModuleBase(processId);
+    if (moduleBase == -1)
+    {
+        ErrorAndExit("Couldn't get module base.");
     }
 
     HANDLE hProcess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, processId);
@@ -71,6 +77,25 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE _hPrevInstance,
             break;
         }
 
+        int playerCount = GetPlayerCount(hProcess, moduleBase);
+        Player *entityList = GetEntityList(hProcess, moduleBase, playerCount);
+        Matrix4 viewMatrix = GetViewMatrix(hProcess, moduleBase);
+        Matrix4 projMatrix = GetProjectionMatrix(hProcess, moduleBase);
+        COORD screenSize = GetScreenSize(hTarget);
+
+        g_overlayData.playerCount = 0;
+
+        for (int i = 1; i < playerCount; i++)
+        {
+            Vector2 screenPos;
+            if (WorldToScreen(entityList[i].headPos, &screenPos, viewMatrix, projMatrix, screenSize.X, screenSize.Y))
+            {
+                g_overlayData.playerPositions[g_overlayData.playerCount] = (COORD){(SHORT)screenPos.x, (SHORT)screenPos.y};
+                g_overlayData.playerCount++;
+            }
+        }
+
+        free(entityList);
         UpdateOverlay(hOverlay, hTarget);
         Sleep(wait);
     }

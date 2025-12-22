@@ -63,3 +63,24 @@ uintptr_t GetProcessModuleBase(DWORD processId)
 
     return moduleBase;
 }
+
+int IsAddressValid(HANDLE hProcess, uintptr_t address)
+{
+    MEMORY_BASIC_INFORMATION mbi;
+    if (VirtualQueryEx(hProcess, (LPCVOID)address, &mbi, sizeof(mbi)) == 0)
+    {
+        return 0;
+    }
+
+    if (mbi.State != MEM_COMMIT)
+    {
+        return 0;
+    }
+
+    if ((mbi.Protect & PAGE_NOACCESS) || (mbi.Protect & PAGE_GUARD))
+    {
+        return 0;
+    }
+
+    return 1;
+}

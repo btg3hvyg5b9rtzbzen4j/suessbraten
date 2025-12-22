@@ -1,6 +1,7 @@
 #include "math.h"
 
-Matrix4 Matrix4fMul(Matrix4 a, Matrix4 b) {
+Matrix4 Matrix4fMul(Matrix4 a, Matrix4 b)
+{
     Matrix4 r;
 
     r.m00 = a.m00 * b.m00 + a.m01 * b.m10 + a.m02 * b.m20 + a.m03 * b.m30;
@@ -26,7 +27,8 @@ Matrix4 Matrix4fMul(Matrix4 a, Matrix4 b) {
     return r;
 }
 
-Vector4 Matrix4MulVector4(Vector4 v, Matrix4 m) {
+Vector4 Matrix4MulVector4(Vector4 v, Matrix4 m)
+{
     Vector4 r;
 
     r.x = v.x * m.m00 + v.y * m.m10 + v.z * m.m20 + v.w * m.m30;
@@ -37,8 +39,9 @@ Vector4 Matrix4MulVector4(Vector4 v, Matrix4 m) {
     return r;
 }
 
-Vector2 WorldToScreen(Vector3 pos, char *visible, Matrix4 view,
-                      Matrix4 projection, int screenWidth, int screenHeight) {
+int WorldToScreen(Vector3 pos, Vector2 *screenPos, Matrix4 view,
+                  Matrix4 projection, int screenWidth, int screenHeight)
+{
     // combine proj + view matrix
     Matrix4 pvMatrix = Matrix4fMul(view, projection);
 
@@ -47,9 +50,9 @@ Vector2 WorldToScreen(Vector3 pos, char *visible, Matrix4 view,
         Matrix4MulVector4((Vector4){pos.x, pos.y, pos.z, 1.f}, pvMatrix);
 
     // check if its behind the camera
-    if (csp.w < 0.0f) {
-        *visible = 0;
-        return (Vector2){};
+    if (csp.w <= 0.0f)
+    {
+        return 0;
     }
 
     // normalize to device coordinates
@@ -58,7 +61,12 @@ Vector2 WorldToScreen(Vector3 pos, char *visible, Matrix4 view,
     float screenX = (ndc.x + 1.0f) * screenWidth / 2.0f;
     float screenY = (1.0f - ndc.y) * screenHeight / 2.0f;
 
-    *visible = 1;
+    if (screenX < 0 || screenX > screenWidth || screenY < 0 || screenY > screenHeight)
+    {
+        return 0;
+    }
 
-    return (Vector2){screenX, screenY};
+    *screenPos = (Vector2){screenX, screenY};
+
+    return 1;
 }

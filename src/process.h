@@ -15,4 +15,7 @@ DWORD GetProcessIdFromName(const char *processName);
  */
 uintptr_t GetProcessModuleBase(DWORD processId);
 
+/** Checks if the given address is valid in the target process. */
+int IsAddressValid(HANDLE hProcess, uintptr_t address);
+
 #endif

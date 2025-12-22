@@ -5,6 +5,14 @@
 
 #define COLORKEY RGB(69, 69, 69)
 
+typedef struct
+{
+    COORD playerPositions[32];
+    int playerCount;
+} OverlayData;
+
+extern OverlayData g_overlayData;
+
 /**
  * Creates the overlay window.
  * @param hInstance The HINSTANCE from WinMain
@@ -23,5 +31,10 @@ void UpdateOverlay(HWND hOverlay, HWND hTarget);
  * Get the FPS of the current monitor.
  */
 int GetFps();
+
+/**
+ * Get the screen size of the target window.
+ */
+COORD GetScreenSize(HWND hTarget);
 
 #endif
